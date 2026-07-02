@@ -1,0 +1,20 @@
+# source videos (frames are extracted; site doesn't use these)
+NEW/*.mp4
+
+# design references / scratch files not used by the site
+reference.png
+reference2.png
+Untitled-1.svg
+index-experimental.html
+logo-animation.html
+3649
+
+# temp render artifacts
+_*.html
+_*.png
+
+# tooling
+.vercel/
+node_modules/
+.DS_Store
+Thumbs.db

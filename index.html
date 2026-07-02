@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manglam BDL — Scroll Experience</title>
+  <!-- elegant high-contrast serif for the hero word (matches the reference) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ---------- Dropped font: Organetto Sans ---------- */
+    @font-face {
+      font-family: "Organetto";
+      src: url("Organetto-Sans-Font-Family/Demo_Fonts/Fontspring-DEMO-organetto-light.otf") format("opentype");
+      font-weight: 300;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Organetto";
+      src: url("Organetto-Sans-Font-Family/Demo_Fonts/Fontspring-DEMO-organetto-regular.otf") format("opentype");
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Organetto";
+      src: url("Organetto-Sans-Font-Family/Demo_Fonts/Fontspring-DEMO-organetto-bold.otf") format("opentype");
+      font-weight: 700;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Organetto";
+      src: url("Organetto-Sans-Font-Family/Demo_Fonts/Fontspring-DEMO-organetto-ultrabold.otf") format("opentype");
+      font-weight: 800;
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #1b2a6b;      /* logo blue  */
+      --accent: #c8102e;   /* logo red   */
+      --gold: #e8b15a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: auto; }   /* JS handles smoothing; CSS smooth would fight it */
+
+    body {
+      font-family: "Organetto", "Segoe UI", system-ui, sans-serif;
+      background: #f4f4f4;
+      color: #1b1b1b;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------- Scroll-scrub frame section ---------- */
+    .frames {
+      position: relative;
+      height: 3312vh;           /* scroll distance for the frame scrub (17 segments; New18 holds 30 extra frames) */
+      background: #ffffff;
+    }
+
+    .frames__sticky {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .frames__canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* loading state */
+    .loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      z-index: 20;
+      transition: opacity .6s ease;
+    }
+    .loader.hide { opacity: 0; pointer-events: none; }
+    .loader__bar {
+      width: 220px; height: 3px;
+      background: #e6e6e6; border-radius: 99px; overflow: hidden;
+    }
+    .loader__fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--ink), var(--accent));
+      transition: width .2s ease;
+    }
+    .loader__txt {
+      font-size: 12px; letter-spacing: .28em; text-transform: uppercase;
+      color: #9aa0ab;
+    }
+
+    /* caption lockups + final reveal text */
+    .welcome {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -42%);
+      text-align: center;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity .8s ease, transform .8s ease;
+      padding: 0 24px;
+    }
+    .welcome.is-visible {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+    /* simple uppercase caption text */
+    .cap-line {
+      margin: 0;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .22em;
+      font-size: clamp(1.5rem, 3.4vw, 2.8rem);
+      line-height: 1.35;
+      color: #4d3609;        /* golden dark — reads over the bright clouds, no shadow */
+      padding-left: .22em;   /* offset trailing letter-spacing to re-centre */
+      white-space: nowrap;   /* break only at the explicit <br> */
+    }
+
+    /* closing CTAs — shown only at the very end of the scroll */
+    .end-cta {
+      position: absolute;
+      left: 50%; bottom: 12vh;
+      transform: translate(-50%, 20px);
+      z-index: 11;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .6s ease, transform .6s cubic-bezier(.33, 1, .68, 1);
+    }
+    .end-cta.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
+    }
+    .end-cta__btn {
+      font-family: "Organetto", sans-serif;
+      font-size: clamp(.72rem, 1vw, .85rem);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #4d3609;
+      background: transparent;
+      border: 1px solid rgba(77, 54, 9, .55);
+      border-radius: 99px;
+      padding: 15px 34px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      transition: background .25s ease, color .25s ease, border-color .25s ease;
+    }
+    .end-cta__btn span { font-size: 1.05em; }
+    .end-cta__btn:hover { background: #4d3609; color: #fff; border-color: #4d3609; }
+    .end-cta__btn--solid {
+      background: #4d3609;
+      color: #fff;
+      border-color: #4d3609;
+    }
+    .end-cta__btn--solid:hover { background: #2a1d05; border-color: #2a1d05; }
+
+    /* ---- realistic white sun + rays (independent layer) ---- */
+    .sun {
+      position: absolute;
+      inset: 0;
+      z-index: 4;             /* above frames, below the text (z-index 10) */
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .8s ease;
+    }
+    .sun.is-visible { opacity: 1; }
+    /* soft white bloom / sun core */
+    .sun::before {
+      content: "";
+      position: absolute;
+      left: 50%; top: 56%;
+      transform: translate(-50%, -50%);
+      width: min(120vw, 1400px);
+      height: min(120vw, 1400px);
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 45% at center,
+          rgba(255,255,255,.78)  0%,
+          rgba(255,253,247,.55) 12%,
+          rgba(255,247,228,.30) 30%,
+          rgba(255,242,214,.10) 48%,
+          rgba(255,240,210,0)   66%);
+      filter: blur(8px);
+    }
+    /* volumetric light rays radiating from the sun */
+    .sun::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 56%;
+      transform: translate(-50%, -50%);
+      width: min(130vw, 1500px);
+      height: min(130vw, 1500px);
+      pointer-events: none;
+      background:
+        repeating-conic-gradient(from 0deg at 50% 50%,
+          rgba(255,255,255,0)   0deg,
+          rgba(255,255,255,0)   3.2deg,
+          rgba(255,255,255,.20) 5deg,
+          rgba(255,255,255,0)   6.8deg,
+          rgba(255,255,255,0)   10deg);
+      -webkit-mask: radial-gradient(circle at center,
+          transparent 4%, #000 16%, transparent 60%);
+      mask: radial-gradient(circle at center,
+          transparent 4%, #000 16%, transparent 60%);
+      mix-blend-mode: screen;
+      opacity: .22;
+      animation: sunspin 140s linear infinite;
+    }
+    @keyframes sunspin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to   { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    /* second lockup anchored to the right-side area */
+    .welcome--right {
+      left: 75%;
+      top: 46%;
+    }
+
+    /* ===== second lockup: ring + MOVE THE WORLD ===== */
+    .quote2 {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 56px 110px;
+      --g2: #b07412;                 /* gold for word / ring / sparkles */
+      --g2-ink: #6f4a16;             /* darker brown for the small caps */
+    }
+    /* thin ring: white at top fading to gold at the bottom */
+    .ring {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: clamp(300px, 34vw, 470px);
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      background: linear-gradient(180deg,
+        rgba(255,255,255,.95) 0%,
+        rgba(255,251,238,.55) 26%,
+        rgba(176,116,18,.5) 72%,
+        rgba(176,116,18,.62) 100%);
+      /* 1px circular stroke only — transparent past the edge so no square corners */
+      -webkit-mask: radial-gradient(circle closest-side,
+        transparent calc(100% - 1.5px), #000 calc(100% - 1.5px) 100%, transparent 100%);
+              mask: radial-gradient(circle closest-side,
+        transparent calc(100% - 1.5px), #000 calc(100% - 1.5px) 100%, transparent 100%);
+    }
+    .q2-eyebrow,
+    .q2-divider {
+      font-family: "Organetto", "Segoe UI", sans-serif;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: .34em;
+      font-size: clamp(.62rem, 1.3vw, .95rem);
+      color: var(--g2-ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-left: .34em;
+      white-space: nowrap;
+    }
+    .q2-word {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(2.2rem, 5.6vw, 4.4rem);
+      line-height: .96;
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;          /* keep "THE WORLD" on one line */
+      margin: 2px 0;
+      background: linear-gradient(180deg, #e2ad44 0%, #c8902f 55%, #b07412 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .q2-top,
+    .q2-divider { gap: 14px; }
+    .q2-rule {
+      width: clamp(22px, 4vw, 54px);
+      height: 1px;
+      background: currentColor;
+      opacity: .55;
+    }
+    .q2-top { color: var(--g2); }
+    .q2-spark {
+      color: var(--g2);
+      font-size: clamp(12px, 1.4vw, 18px);
+      line-height: 1;
+    }
+    .q2-bottom { margin-top: 2px; }
+
+    /* editorial gold lockup: FOR THE / Life / YOU ARE BUILDING */
+    .quote {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      --gold-deep: #ffffff;     /* white small caps for visibility */
+    }
+    .quote__spark {
+      font-size: clamp(14px, 1.6vw, 22px);
+      color: #ffffff;
+      line-height: 1;
+      opacity: .9;
+    }
+    .quote__eyebrow,
+    .quote__sub {
+      font-family: "Organetto", "Segoe UI", sans-serif;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: .42em;
+      color: var(--gold-deep);
+      font-size: clamp(.7rem, 1.5vw, 1.15rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-left: .42em;         /* offset trailing letter-spacing to re-center */
+      text-shadow: 0 1px 10px rgba(40, 22, 2, .5);
+    }
+    .quote__rule {
+      width: clamp(28px, 5vw, 70px);
+      height: 1px;
+      background: currentColor;
+      opacity: .65;
+      margin: 0 18px;
+    }
+    /* bottom flourish: short rules flanking the sparkle */
+    .quote__divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-deep);
+      margin-top: 2px;
+    }
+    .quote__rule--sm {
+      width: clamp(18px, 3vw, 46px);
+      margin: 0 14px;
+    }
+    /* title position variants */
+    /* 2nd caption — inside the top-right area, wraps to multiple lines */
+    .cap-tr {
+      left: auto; right: 7vw; top: 39%;
+      transform: translateY(calc(-50% - 12px));
+      text-align: left;
+      max-width: 40vw;
+      padding: 0;
+    }
+    .welcome.cap-tr.is-visible { transform: translateY(-50%); }
+    /* 3rd caption — inside the top-left area, wraps to multiple lines */
+    .cap-tl {
+      left: 8vw; right: auto; top: 40%;
+      transform: translateY(calc(-50% - 12px));
+      text-align: left;
+      max-width: 38vw;
+      padding: 0;
+    }
+    .welcome.cap-tl.is-visible { transform: translateY(-50%); }
+
+    /* 1st title keeps the previous gold treatment (no shadow) */
+    .cap-gold .quote { --gold-deep: #8a5a1c; }
+    .cap-gold .quote__spark { color: #6f4a18; text-shadow: none; }
+    .cap-gold .quote__eyebrow,
+    .cap-gold .quote__sub { text-shadow: none; }
+    .cap-gold .quote__word {
+      color: transparent;
+      background: linear-gradient(180deg, #f6b12e 0%, #f9b93e 50%, #fdd86f 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-shadow: none;
+    }
+
+    .quote__word {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(2.6rem, 8vw, 6rem);
+      line-height: .9;
+      letter-spacing: .01em;
+      text-transform: uppercase;
+      margin: -2px 0;
+      color: #fff;
+      text-shadow: 0 2px 16px rgba(40, 22, 2, .5), 0 1px 3px rgba(40, 22, 2, .45);
+    }
+
+    /* ===== glassmorphism panel ===== */
+    .glass {
+      position: relative;
+      flex: 0 0 auto;
+      width: min(82vw, 720px);
+      height: min(72vh, 560px);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .42);     /* frosted enough that dark text reads on any backdrop */
+      -webkit-backdrop-filter: blur(18px) saturate(1.15);
+      backdrop-filter: blur(18px) saturate(1.15);
+      box-shadow: 0 30px 80px rgba(60, 40, 6, .25), inset 0 1px 0 rgba(255,255,255,.45);
+      color: #4d3609;
+      display: flex;
+    }
+    /* card 1 (no image) — full-bleed: title + CTA over the frame, no glass box */
+    .glass--noimg {
+      width: auto;
+      max-width: min(92vw, 980px);
+      height: auto;
+      border-radius: 0;
+      background: transparent;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    .glass--noimg::before { display: none; }      /* no frosted panel */
+    .gallery__panel--solo .glass::after { display: none; }  /* no gold border */
+    .glass--noimg .glass__content { position: relative; z-index: 1; padding: 0; }
+    .glass--noimg .glass__title { margin-bottom: 28px; }
+    .glass::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1.5px;
+      background: linear-gradient(130deg, #f4d889 0%, #ffffff 46%, #cf9a26 100%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      pointer-events: none;
+      z-index: 3;
+    }
+    /* left half — image */
+    .glass__img {
+      flex: 0 0 44%;
+      background-size: cover;
+      background-position: center;
+    }
+    /* right half — content */
+    .glass__content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(24px, 3vw, 46px);
+      min-width: 0;
+    }
+    .glass__top { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .glass__logo {
+      font-family: "Organetto", sans-serif;
+      font-weight: 700;
+      letter-spacing: .14em;
+      font-size: clamp(1rem, 1.6vw, 1.4rem);
+    }
+    .glass__nav { display: flex; gap: clamp(14px, 1.8vw, 30px); }
+    .glass__nav a {
+      font-family: "Organetto", system-ui, sans-serif;
+      font-size: clamp(.66rem, .9vw, .82rem);
+      letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(77,54,9,.82); text-decoration: none;
+      transition: color .2s ease;
+    }
+    .glass__nav a:hover { color: #4d3609; }
+    .glass__main { align-self: flex-start; text-align: left; max-width: 100%; }
+    .glass__kicker {
+      font-family: "Organetto", sans-serif;
+      font-size: clamp(.7rem, 1vw, .9rem); letter-spacing: .3em; text-transform: uppercase;
+      color: #9a6310;
+    }
+    .glass__title {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 500;
+      text-transform: none;            /* sentence case as written */
+      letter-spacing: normal;
+      font-size: clamp(1.8rem, 3.3vw, 2.9rem);
+      line-height: 1.12; margin: 12px 0 16px;
+    }
+    .glass__text {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-weight: 400;
+      font-size: clamp(.9rem, 1.15vw, 1.02rem);
+      line-height: 1.6; color: rgba(58, 40, 6, .92);
+      margin: 0 0 24px; max-width: 42ch;
+    }
+    .glass__btn {
+      font-family: "Organetto", sans-serif;
+      font-size: clamp(.72rem, 1vw, .85rem); letter-spacing: .18em; text-transform: uppercase;
+      color: #4d3609; background: transparent;
+      border: 1px solid rgba(77,54,9,.5);
+      border-radius: 99px;
+      padding: 14px 30px;
+      cursor: pointer;
+      transition: background .25s ease, color .25s ease;
+      align-self: flex-start;
+      display: inline-block;
+      text-decoration: none;
+    }
+    .glass__btn:hover { background: #4d3609; color: #fff; }
+    /* card 1 CTA — gold outline pill with arrow */
+    .gallery__panel--solo .glass__btn {
+      background: transparent;
+      border: 1px solid rgba(244, 216, 137, .55);
+      color: #f4d889;
+    }
+    .gallery__panel--solo .glass__btn::after { content: "\2192"; margin-left: 14px; }
+    .gallery__panel--solo .glass__btn:hover { background: #f4d889; color: #2a1d05; border-color: #f4d889; }
+    /* first/solo card sits on a frosted dark glass layer — all text light */
+    .gallery__panel--solo .glass__kicker { color: #e7c574; }
+    .gallery__panel--solo .glass__title  {
+      color: #fdf6e6;
+      font-size: clamp(1.9rem, 3.6vw, 3.2rem);
+      line-height: 1.05;
+      max-width: none;          /* let the manual <br> control line breaks */
+      text-shadow: 0 2px 26px rgba(0, 0, 0, .5);
+    }
+    .gallery__panel--solo .glass__text   { color: rgba(255, 252, 244, .8); }
+
+    /* ===== gallery: fixed overlay shown over the duplicated New5 frames ===== */
+    .gallery {
+      position: fixed;
+      inset: 0;
+      z-index: 8;                    /* above the frame canvas, below the loader */
+      overflow: hidden;
+      pointer-events: none;
+      visibility: hidden;          /* shown instantly; exit delayed so the card can fade out first */
+      transition: visibility 0s linear .5s;
+    }
+    .gallery.show { pointer-events: auto; visibility: visible; transition: visibility 0s; }
+    .gallery__sticky {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      /* transparent — the duplicated New5 frames show behind the glass cards */
+    }
+    .gallery__track {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      width: max-content;
+      transform: translateX(0);
+      transition: transform .9s cubic-bezier(.6, 0, .2, 1);
+      will-change: transform;
+    }
+    /* CTA click slides sub-section 2 (the four cards) into the screen */
+    .gallery__track.is-open { transform: translateX(-100vw); }
+
+    /* card 1: slides in from its aligned side, then FADES out when it leaves */
+    @keyframes cardInRight { from { transform: translateX(140%); }  to { transform: translateX(0); } }
+    @keyframes cardInLeft  { from { transform: translateX(-140%); } to { transform: translateX(0); } }
+    @keyframes cardFadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes cardInUp    { from { transform: translateY(70px); } to { transform: translateY(0); } }
+    .gallery .gallery__panel--solo .glass {
+      opacity: 0;
+      animation: cardFadeOut .45s ease forwards;        /* exit: fade out in place */
+    }
+    .gallery.show .gallery__panel--solo .glass {
+      opacity: 1;
+      animation: cardInRight .7s cubic-bezier(.33, 1, .68, 1) forwards;   /* right galleries (1,3,5) */
+    }
+    #gallery2.show .gallery__panel--solo .glass,
+    #gallery4.show .gallery__panel--solo .glass {
+      animation: cardInLeft .7s cubic-bezier(.33, 1, .68, 1) forwards;    /* left galleries (2,4) */
+    }
+    /* banner galleries (Hospitality, Entertainment) share the full-bleed bottom-left layout */
+    .gallery--banner .gallery__panel--solo .glass__main { display: block; width: auto; }
+    .gallery--banner .gallery__panel--solo .glass__title { margin: 0 0 28px; }
+    .gallery--banner .gallery__panel--solo .glass__content { padding: 0; }
+    .gallery--banner.show .gallery__panel--solo .glass {
+      animation: cardInUp .7s cubic-bezier(.33, 1, .68, 1) forwards;
+    }
+    /* sub-section 1 — full-bleed: title + CTA anchored bottom-left over the frame */
+    .gallery__panel--solo {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      width: 100vw;
+      height: 100%;
+      padding: 0 6vw 8vh;
+      position: relative;
+    }
+    /* dark gradient along the bottom so the title + CTA stay legible */
+    .gallery__panel--solo::before {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 62%;
+      background: linear-gradient(to top, rgba(8, 5, 1, .9) 0%, rgba(8, 5, 1, .52) 38%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .gallery__panel--solo .glass { position: relative; z-index: 1; }
+    /* right-aligned first cards: Apartments, Hospitality, Entertainment */
+    #gallery .gallery__panel--solo,
+    #gallery5 .gallery__panel--solo,
+    #gallery6 .gallery__panel--solo { justify-content: flex-end; }
+    #gallery .gallery__panel--solo .glass__main,
+    #gallery5 .gallery__panel--solo .glass__main,
+    #gallery6 .gallery__panel--solo .glass__main { text-align: right; }
+    /* sub-section 2 — the four cards in a row, horizontally scrollable */
+    .gallery__panel--group {
+      display: flex;
+      align-items: center;
+      gap: 5vw;
+      height: 100%;
+      width: 100vw;                  /* fills the screen once slid in */
+      padding: 0 9vw;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;         /* Firefox */
+      -ms-overflow-style: none;      /* old Edge */
+    }
+    .gallery__panel--group::-webkit-scrollbar { display: none; }
+    /* single-project category — centre the lone card */
+    .gallery__panel--group.is-single { justify-content: center; }
+
+    /* "view all" CTA — for categories with more than 4 projects */
+    .gallery__viewall {
+      position: absolute;
+      right: clamp(20px, 3vw, 48px);
+      bottom: clamp(22px, 4vh, 44px);
+      z-index: 20;
+      font-family: "Organetto", sans-serif;
+      font-size: clamp(.68rem, 1vw, .8rem);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #fff7e8;
+      padding: 13px 24px;
+      border-radius: 99px;
+      background: rgba(61, 40, 6, .62);
+      -webkit-backdrop-filter: blur(10px) saturate(1.15);
+      backdrop-filter: blur(10px) saturate(1.15);
+      border: 1px solid rgba(255, 246, 224, .6);
+      box-shadow: 0 12px 30px rgba(40, 24, 4, .4);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity .5s ease, transform .35s cubic-bezier(.5, 0, .2, 1), background .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .gallery__track.is-open ~ .gallery__viewall {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .gallery__track.is-open ~ .gallery__viewall:hover {
+      background: rgba(61, 40, 6, .85);
+      border-color: rgba(255, 246, 224, .92);
+      transform: translateY(-3px);
+      box-shadow: 0 18px 40px rgba(40, 24, 4, .55);
+    }
+
+    /* "view all" link on card 1 itself (multi-project categories) */
+    .glass__viewall-link {
+      display: block;
+      width: -moz-fit-content;
+      width: fit-content;
+      margin-top: 20px;
+      margin-left: 31px;          /* align with the button's text (border 1px + padding 30px) */
+      font-family: "Organetto", sans-serif;
+      font-size: clamp(.66rem, .9vw, .78rem);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #d9b465;
+      border-bottom: 1px solid rgba(217, 180, 101, .5);
+      padding-bottom: 3px;
+      transition: color .2s ease, border-color .2s ease;
+    }
+    .glass__viewall-link:hover { color: #f4d889; border-color: #f4d889; }
+
+    /* back / close button — only visible once sub-section 2 is open */
+    .gallery__close {
+      position: absolute;
+      top: clamp(20px, 3.4vh, 38px);
+      right: clamp(20px, 3vw, 48px);
+      z-index: 20;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(61, 40, 6, .62);
+      -webkit-backdrop-filter: blur(12px) saturate(1.15);
+      backdrop-filter: blur(12px) saturate(1.15);
+      border: 1.5px solid rgba(255, 246, 224, .65);
+      box-shadow: 0 12px 30px rgba(40, 24, 4, .45);
+      color: #fff7e8;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(.82);
+      transition: opacity .5s ease, transform .4s cubic-bezier(.5, 0, .2, 1), background .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .gallery__track.is-open ~ .gallery__close {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+    .gallery__close:hover {
+      background: rgba(61, 40, 6, .85);
+      border-color: rgba(255, 246, 224, .95);
+      box-shadow: 0 16px 38px rgba(40, 24, 4, .55);
+    }
+    .gallery__track.is-open ~ .gallery__close:hover { transform: scale(1.08); }
+    .gallery__close svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      transition: transform .4s cubic-bezier(.5, 0, .2, 1);
+    }
+    .gallery__close:hover svg { transform: rotate(90deg); }
+
+    /* progression dots — visible only when sub-section 2 is open */
+    .gallery__dots {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(22px, 4vh, 44px);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 18px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .16);
+      -webkit-backdrop-filter: blur(10px) saturate(1.15);
+      backdrop-filter: blur(10px) saturate(1.15);
+      border: 1px solid rgba(255, 255, 255, .45);
+      box-shadow: 0 10px 28px rgba(60, 40, 6, .2);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(10px);
+      transition: opacity .5s ease, transform .55s cubic-bezier(.5, 0, .2, 1);
+    }
+    .gallery__dots.is-active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+    .gallery__dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 246, 224, .7);
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      transition: background .3s ease, border-color .3s ease, transform .3s ease;
+    }
+    .gallery__dot:hover { border-color: #fff7e8; }
+    .gallery__dot.is-active {
+      background: #fff7e8;
+      border-color: #fff7e8;
+      transform: scale(1.3);
+    }
+
+    /* brand logo intro over the New1 opening segment */
+    .intro-logo {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: clamp(200px, 26vw, 380px);
+      height: auto;
+      z-index: 6;
+      pointer-events: none;
+      will-change: opacity;
+      filter: drop-shadow(0 10px 26px rgba(40, 22, 2, .28));
+    }
+
+    /* small transparent white brand mark — slides up when idle, then floats */
+    .hero-logo {
+      position: absolute;
+      left: 50%; bottom: 4.5vh;
+      width: clamp(120px, 13vw, 190px);
+      z-index: 7;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(-50%) translateY(48px);
+      transition: opacity .55s ease, transform .6s cubic-bezier(.5, 0, .2, 1);
+    }
+    .hero-logo.show {
+      opacity: .42;
+      transform: translateX(-50%) translateY(0);
+    }
+    .hero-logo__svg { width: 100%; height: auto; display: block; fill: #ffffff; }
+    /* float begins only after the slide-up settles (0.6s = slide duration) */
+    .hero-logo.show .hero-logo__svg {
+      animation: logoFloat 3.2s ease-in-out 0.6s infinite;
+    }
+    @keyframes logoFloat {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-12px); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Scroll-scrubbed frame sequence -->
+  <section class="frames" id="frames">
+    <div class="frames__sticky">
+      <canvas class="frames__canvas" id="frameCanvas"></canvas>
+
+      <!-- brand logo intro — over the New1 opening, fades out on scroll -->
+      <img class="intro-logo" id="introLogo" src="NEW/Untitled-1.png" alt="Manglam BDL">
+
+      <!-- per-video captions — simple uppercase text -->
+      <div class="welcome cap-lockup"><p class="cap-line">For life,<br>at its fullest</p></div>
+      <div class="welcome cap-lockup cap-tr"><p class="cap-line">For the life<br>you are building</p></div>
+      <div class="welcome cap-lockup cap-tl"><p class="cap-line">For the ones<br>you are building<br>it for</p></div>
+      <div class="welcome cap-lockup"><p class="cap-line">For thirty years&hellip;</p></div>
+      <div class="welcome cap-lockup"><p class="cap-line">Building with the purpose</p></div>
+      <div class="welcome cap-lockup"><p class="cap-line">To give you the life<br>you dream of.</p></div>
+
+      <!-- closing CTAs — appear at the very end of the scroll -->
+      <div class="end-cta" id="endCta">
+        <button class="end-cta__btn" id="backTop" type="button">Back to top <span>&uarr;</span></button>
+        <a class="end-cta__btn end-cta__btn--solid" href="https://www.manglamgroup.com/" target="_blank" rel="noopener">Visit Manglam Group <span>&rarr;</span></a>
+      </div>
+
+      <!-- brand mark — slides up when idle, then floats -->
+      <div class="hero-logo" id="heroLogo" aria-label="Manglam">
+        <svg class="hero-logo__svg" viewBox="0 0 951.98 126.01" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="475.99 0 0 118.2 3.04 126.01 475.99 40.48 948.95 126.01 951.98 118.2 475.99 0"/>
+        </svg>
+      </div>
+
+
+      <!-- preloader -->
+      <div class="loader" id="loader">
+        <div class="loader__txt">Loading Experience</div>
+        <div class="loader__bar"><div class="loader__fill" id="loaderFill"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Horizontal-scroll gallery: two sub-sections stacked side by side -->
+  <section class="gallery" id="gallery" data-viewall="https://www.manglamgroup.com/residential-apartments/">
+    <div class="gallery__sticky">
+      <div class="gallery__track" id="galleryTrack">
+
+        <!-- sub-section 1 — only card 1, centered (no horizontal movement) -->
+        <div class="gallery__panel gallery__panel--solo">
+        <article class="glass glass--noimg">
+          <div class="glass__content">
+            <div class="glass__main">
+              <h2 class="glass__title">To watch a wonderful<br>family grow.</h2>
+              <button class="glass__btn">Residential Projects</button>
+            </div>
+          </div>
+        </article>
+        </div>
+
+        <!-- sub-section 2 — latest Residential Apartment projects -->
+        <div class="gallery__panel gallery__panel--group">
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/01/Cam_7_view_FF-1.jpg')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Mansarovar, Jaipur</span>
+              <h2 class="glass__title">Manglam 14<br>Woodland Park</h2>
+              <p class="glass__text">Premium apartments under construction amid landscaped greens in Mansarovar.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/woodland-park-mansarovar/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/04/MGC.jpg')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Mansarovar, Jaipur</span>
+              <h2 class="glass__title">Manglam's<br>Garden City</h2>
+              <p class="glass__text">A modern residential enclave taking shape in the heart of Mansarovar.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/manglams-garden-city/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/02/2-11.png')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Raja Park, Jaipur</span>
+              <h2 class="glass__title">Manglam's<br>Park Infinia</h2>
+              <p class="glass__text">Luxury 3 &amp; 4 BHK residences in the heart of Raja Park.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/manglams-park-infinia-luxury-3bhk-4bhk-in-rajapark-jaipur/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/01/swimmingpool-Corner-Night_cc.jpg')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Jagatpura, Jaipur</span>
+              <h2 class="glass__title">Manglam<br>Rambagh Jagatpura</h2>
+              <p class="glass__text">Contemporary homes rising in fast-growing Jagatpura.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/rambagh-jagatpura/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+        </div>
+
+      </div>
+
+      <!-- back / close — returns to sub-section 1 -->
+      <button class="gallery__close" id="galleryClose" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+
+      <!-- progression dots — one per card in sub-section 2 -->
+      <div class="gallery__dots" id="galleryDots">
+        <button class="gallery__dot is-active" aria-label="Card 1"></button>
+        <button class="gallery__dot" aria-label="Card 2"></button>
+        <button class="gallery__dot" aria-label="Card 3"></button>
+        <button class="gallery__dot" aria-label="Card 4"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery 2 — duplicate, shown over the 2nd duplicated New5 (7th segment) -->
+  <section class="gallery" id="gallery2" data-viewall="https://www.manglamgroup.com/commercial-properties-in-jaipur/">
+    <div class="gallery__sticky">
+      <div class="gallery__track">
+
+        <!-- sub-section 1 — only card 1, centered -->
+        <div class="gallery__panel gallery__panel--solo">
+        <article class="glass glass--noimg">
+          <div class="glass__content">
+            <div class="glass__main">
+              <h2 class="glass__title">To give you an address<br>the world respects.</h2>
+              <button class="glass__btn">Commercial Projects</button>
+            </div>
+          </div>
+        </article>
+        </div>
+
+        <!-- sub-section 2 — latest Commercial projects -->
+        <div class="gallery__panel gallery__panel--group">
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/11/Untitled-design-1.png')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Ajmer Road, Jaipur</span>
+              <h2 class="glass__title">Manglam<br>Pinkwest</h2>
+              <p class="glass__text">A landmark mixed-use commercial destination on Ajmer Road.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/manglam-pinkwest/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/04/Website-Featured-Image.jpg')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Jagatpura, Jaipur</span>
+              <h2 class="glass__title">Manglam<br>Pinkwalk</h2>
+              <p class="glass__text">Retail and office spaces in the heart of fast-growing Jagatpura.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/pinkwalk/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/01/Cam_07-Final-JPG.jpg')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Rambagh, Jaipur</span>
+              <h2 class="glass__title">Manglam<br>Signature Elite</h2>
+              <p class="glass__text">A premium commercial address near the Rambagh circle.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/signature-elite-commercial-property-in-jaipur/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/01/JTM.jpg')"></div>
+          <div class="glass__content">
+            <div class="glass__main">
+              <span class="glass__kicker">Malviya Nagar, Jaipur</span>
+              <h2 class="glass__title">Manglam<br>JTM Mall</h2>
+              <p class="glass__text">A retail and entertainment destination redefining Jaipur's shopping scene.</p>
+              <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/jtm-mall-jaipur-textile-market/" target="_blank" rel="noopener">View Project</a>
+            </div>
+          </div>
+        </article>
+        </div>
+
+      </div>
+
+      <!-- back / close — returns to sub-section 1 -->
+      <button class="gallery__close" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+
+      <!-- progression dots — one per card in sub-section 2 -->
+      <div class="gallery__dots">
+        <button class="gallery__dot is-active" aria-label="Card 1"></button>
+        <button class="gallery__dot" aria-label="Card 2"></button>
+        <button class="gallery__dot" aria-label="Card 3"></button>
+        <button class="gallery__dot" aria-label="Card 4"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery 4 — over the 9th segment -->
+  <section class="gallery" id="gallery4">
+    <div class="gallery__sticky">
+      <div class="gallery__track">
+
+        <div class="gallery__panel gallery__panel--solo">
+        <article class="glass glass--noimg">
+          <div class="glass__content">
+            <div class="glass__main">
+              <h2 class="glass__title">To give them care<br>without compromise.</h2>
+              <button class="glass__btn">Medical Projects</button>
+            </div>
+          </div>
+        </article>
+        </div>
+
+        <!-- sub-section 2 — Medical project -->
+        <div class="gallery__panel gallery__panel--group">
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/02/Untitled-design-1-2.jpg')"></div>
+          <div class="glass__content"><div class="glass__main">
+            <span class="glass__kicker">Mansarovar, Jaipur</span>
+            <h2 class="glass__title">M2 ManglamPlus<br>Medicity</h2>
+            <p class="glass__text">A 330-bed super-specialty hospital delivering advanced, compassionate care under one roof.</p>
+            <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/m2-manglamplus-medicity/" target="_blank" rel="noopener">View Project</a>
+          </div></div>
+        </article>
+        </div>
+
+      </div>
+      <button class="gallery__close" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+      <div class="gallery__dots">
+        <button class="gallery__dot is-active" aria-label="Card 1"></button>
+        <button class="gallery__dot" aria-label="Card 2"></button>
+        <button class="gallery__dot" aria-label="Card 3"></button>
+        <button class="gallery__dot" aria-label="Card 4"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery 5 — over the 10th segment -->
+  <section class="gallery gallery--banner" id="gallery5">
+    <div class="gallery__sticky">
+      <div class="gallery__track">
+
+        <div class="gallery__panel gallery__panel--solo">
+        <article class="glass glass--noimg">
+          <div class="glass__content">
+            <div class="glass__main">
+              <h2 class="glass__title">To give you the pause<br>you have earned.</h2>
+              <button class="glass__btn">Hospitality Projects</button>
+            </div>
+          </div>
+        </article>
+        </div>
+
+        <!-- sub-section 2 — Hospitality project -->
+        <div class="gallery__panel gallery__panel--group">
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/02/WhatsApp-Image-2023-10-16-at-11.19.50-AM.jpg')"></div>
+          <div class="glass__content"><div class="glass__main">
+            <span class="glass__kicker">Delhi Road, Jaipur</span>
+            <h2 class="glass__title">The Westin Jaipur<br>Resort &amp; Spa</h2>
+            <p class="glass__text">A luxury resort and spa in partnership with Marriott International.</p>
+            <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/westin-resort-spa-by-manglam/" target="_blank" rel="noopener">View Project</a>
+          </div></div>
+        </article>
+        </div>
+
+      </div>
+      <button class="gallery__close" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+      <div class="gallery__dots">
+        <button class="gallery__dot is-active" aria-label="Card 1"></button>
+        <button class="gallery__dot" aria-label="Card 2"></button>
+        <button class="gallery__dot" aria-label="Card 3"></button>
+        <button class="gallery__dot" aria-label="Card 4"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery 6 — over the 11th segment -->
+  <section class="gallery gallery--banner" id="gallery6">
+    <div class="gallery__sticky">
+      <div class="gallery__track">
+
+        <div class="gallery__panel gallery__panel--solo">
+        <article class="glass glass--noimg">
+          <div class="glass__content">
+            <div class="glass__main">
+              <h2 class="glass__title">To give the people you love<br>a reason to celebrate.</h2>
+              <button class="glass__btn">Entertainment Projects</button>
+            </div>
+          </div>
+        </article>
+        </div>
+
+        <!-- sub-section 2 — Entertainment project -->
+        <div class="gallery__panel gallery__panel--group">
+        <article class="glass">
+          <div class="glass__img" style="background-image:url('https://www.manglamgroup.com/wp-content/uploads/2024/02/5-1.jpg')"></div>
+          <div class="glass__content"><div class="glass__main">
+            <span class="glass__kicker">Mansarovar, Jaipur</span>
+            <h2 class="glass__title">Fun Kingdom<br>by Manglam</h2>
+            <p class="glass__text">An iconic family entertainment and amusement destination in Mansarovar.</p>
+            <a class="glass__btn" href="https://www.manglamgroup.com/portfolio/fun-kingdom-by-manglam/" target="_blank" rel="noopener">View Project</a>
+          </div></div>
+        </article>
+        </div>
+
+      </div>
+      <button class="gallery__close" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+      <div class="gallery__dots">
+        <button class="gallery__dot is-active" aria-label="Card 1"></button>
+        <button class="gallery__dot" aria-label="Card 2"></button>
+        <button class="gallery__dot" aria-label="Card 3"></button>
+        <button class="gallery__dot" aria-label="Card 4"></button>
+      </div>
+    </div>
+  </section>
+
+
+  <script>
+    (function () {
+      // ---- Config ----
+      // Sequences play back-to-back as one continuous scroll
+      const SEQUENCES = [
+        { folder: "New1", count: 121 },   // Manglam logo intro
+        { folder: "New2", count: 121 },   // divine figure + sun
+        { folder: "New3", count: 121 },   // sunburst
+        { folder: "New4", count: 121 },   // bright sun
+        { folder: "New5", count: 121 },   // golden clouds
+        { folder: "New6", count: 121 },   // boy in the clouds
+        { folder: "New7", count: 121 },   // family moment
+        { folder: "New8", count: 121 },   // gallery 1 backdrop
+        { folder: "New9", count: 121 },   // transition (gallery 1 -> 2)
+        { folder: "New10", count: 121 },  // transition (gallery 1 -> 2)
+        { folder: "New11", count: 121 },  // gallery 2 backdrop
+        { folder: "New12", count: 121 },  // transition (after gallery 2)
+        { folder: "New13", count: 121 },  // gallery 5 backdrop (Hospitality)
+        { folder: "New14", count: 121 },  // gallery 4 backdrop (Medical)
+        { folder: "New16", count: 121 },  // gallery 6 backdrop (Entertainment)
+        { folder: "New17", count: 121 },  // transition (after Entertainment)
+        { folder: "New18", count: 151 },  // transition (after Entertainment) — first 30 frames hold the clean still so the closing line lingers
+      ];
+      // Flatten into one ordered list of frame URLs
+      const FRAME_URLS = SEQUENCES.flatMap((s) =>
+        Array.from({ length: s.count }, (_, i) =>
+          `${s.folder}/${String(i + 1).padStart(5, "0")}.jpg`
+        )
+      );
+      const FRAME_COUNT = FRAME_URLS.length;
+      const PATH = (i) => FRAME_URLS[i - 1];
+
+      const canvas = document.getElementById("frameCanvas");
+      const ctx = canvas.getContext("2d");
+      const section = document.getElementById("frames");
+      const loader = document.getElementById("loader");
+      const loaderFill = document.getElementById("loaderFill");
+      const heroLogo = document.getElementById("heroLogo");
+      const introLogo = document.getElementById("introLogo");
+      const galleries = [
+        { el: document.getElementById("gallery"), seg: 8, endSeg: 9, endN: 50 },
+        { el: document.getElementById("gallery2"), seg: 11 },
+        { el: document.getElementById("gallery4"), seg: 14 },
+        { el: document.getElementById("gallery5"), seg: 13, startSeg: 12, startN: 60, endSeg: 13, endN: 60 },
+        { el: document.getElementById("gallery6"), seg: 15, startSeg: 15, startN: 70, endSeg: 16, endN: 70 },
+      ];
+      const caps = Array.from(document.querySelectorAll(".cap-lockup"));
+      const endCta = document.getElementById("endCta");
+      const backTop = document.getElementById("backTop");
+      if (backTop) backTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+      const images = new Array(FRAME_COUNT);
+
+      // helper: video v (1-5), frame n (1-121) -> absolute frame index
+      const V = (v, n) => (v - 1) * 121 + (n - 1);
+
+      // each caption shows over its own video segment [fromIndex, toIndex]
+      const CAP_WINDOWS = [
+        [V(1, 85), V(2, 40)],    // 1: New1 00085 -> New2 00040
+        [V(2, 70), V(3, 50)],    // 2: New2 00070 -> New3 00050
+        [V(3, 80), V(4, 40)],    // 3: New3 00080 -> New4 00040
+        [V(4, 80), V(5, 12)],    // 4: New4 00080 -> New5 00012
+        [V(5, 40), V(5, 110)],   // 5: New5 00040 -> 00110
+        [V(16, 80), V(17, 60)],  // 6: New17 00080 -> New18 00060 (over the clean held still)
+      ];
+
+      let loaded = 0;
+      let imgW = 1920, imgH = 1080;
+      let currentFrame = -1;     // last drawn (integer) frame
+      let displayFrame = 0;      // smoothed frame position
+      let targetFrame = 0;       // scroll-driven target
+      let rafId = null;
+      let ready = false;
+      const SMOOTH = 0.28;       // 0..1 — lower = smoother/slower catch-up
+
+      // ---- High-DPI canvas sizing with cover-fit drawing ----
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = canvas.clientWidth * dpr;
+        canvas.height = canvas.clientHeight * dpr;
+        drawFrame(currentFrame < 0 ? 0 : currentFrame, true);
+      }
+
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      function drawFrame(index, force) {
+        index = Math.max(0, Math.min(FRAME_COUNT - 1, index));
+        if (index === currentFrame && !force) return;
+        const img = images[index];
+        if (!img || !img.complete) return;
+        currentFrame = index;
+
+        const cw = canvas.width, ch = canvas.height;
+        const ir = img.width / img.height;
+        const cr = cw / ch;
+        let dw, dh, dx, dy;
+        if (cr > ir) { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2; }
+        else { dh = ch; dw = ch * ir; dy = 0; dx = (cw - dw) / 2; }
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(img, dx, dy, dw, dh);
+      }
+
+      // ---- Scroll → frame mapping ----
+      function getProgress() {
+        const rect = section.getBoundingClientRect();
+        const scrollable = section.offsetHeight - window.innerHeight;
+        const scrolled = Math.min(Math.max(-rect.top, 0), scrollable);
+        return scrollable > 0 ? scrolled / scrollable : 0;
+      }
+
+      function syncTarget() {
+        const p = getProgress();
+        targetFrame = p * (FRAME_COUNT - 1);
+        const f = targetFrame; // 0-based frame index across the whole sequence
+
+        // brand logo intro — full over the opening, fades out across New1
+        if (introLogo) {
+          const s = V(1, 35), e = V(1, 80);
+          introLogo.style.opacity = f <= s ? 1 : Math.max(0, 1 - (f - s) / (e - s));
+        }
+
+        // show each caption during its video segment
+        for (let i = 0; i < caps.length; i++) {
+          const w = CAP_WINDOWS[i];
+          caps[i].classList.toggle("is-visible", w && f >= w[0] && f <= w[1]);
+        }
+
+        // closing CTAs — appear once the scroll reaches the very end
+        if (endCta) endCta.classList.toggle("is-visible", f >= V(17, 125));
+
+        // gallery overlays — each fades in over its duplicated New5 segment
+        galleries.forEach((g) => {
+          if (!g.el) return;
+          const start = g.startSeg ? V(g.startSeg, g.startN) : V(g.seg, 15);
+          const end = g.endSeg ? V(g.endSeg, g.endN) : V(g.seg, 121);
+          const showG = f >= start && f <= end;
+          g.el.classList.toggle("show", showG);
+          if (!showG) {
+            const t = g.el.querySelector(".gallery__track");
+            if (t) t.classList.remove("is-open");   // reset to sub-section 1 when out of view
+          }
+        });
+      }
+
+      // continuous render loop — smoothly eases the displayed frame
+      // toward the scroll target so scrubbing feels fluid, not steppy
+      function tick() {
+        displayFrame = lerp(displayFrame, targetFrame, SMOOTH);
+        if (Math.abs(targetFrame - displayFrame) < 0.01) displayFrame = targetFrame;
+        drawFrame(Math.round(displayFrame));
+        rafId = requestAnimationFrame(tick);
+      }
+
+      function onScroll() {
+        syncTarget();
+      }
+
+      // ---- Preload all frames ----
+      function preload() {
+        for (let i = 0; i < FRAME_COUNT; i++) {
+          const img = new Image();
+          img.src = PATH(i + 1);
+          img.onload = img.onerror = () => {
+            loaded++;
+            const pct = Math.round((loaded / FRAME_COUNT) * 100);
+            loaderFill.style.width = pct + "%";
+            if (i === 0) { imgW = img.width || imgW; imgH = img.height || imgH; }
+            if (loaded === FRAME_COUNT) onReady();
+          };
+          images[i] = img;
+        }
+      }
+
+      function onReady() {
+        ready = true;
+        loader.classList.add("hide");
+        resizeCanvas();
+        syncTarget();
+        displayFrame = targetFrame;
+        if (!rafId) tick();
+      }
+
+      // ---- Init ----
+      window.addEventListener("resize", resizeCanvas);
+      window.addEventListener("scroll", onScroll, { passive: true });
+      resizeCanvas();
+      preload();
+    })();
+
+    // ---- Smooth (inertia) page scrolling ----
+    (function () {
+      // pointer-fine only — leave native touch/trackpad-momentum scrolling alone
+      if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches) return;
+
+      const EASE = 0.09;        // lower = more glide
+      let target = window.scrollY || 0;
+      let current = target;
+      let running = false;
+
+      const maxScroll = () =>
+        document.documentElement.scrollHeight - window.innerHeight;
+
+      function onWheel(e) {
+        if (window.__isScrollLocked && window.__isScrollLocked()) { e.preventDefault(); return; }
+        e.preventDefault();
+        target = Math.min(Math.max(target + e.deltaY, 0), maxScroll());
+        if (!running) { running = true; requestAnimationFrame(loop); }
+      }
+
+      function loop() {
+        current += (target - current) * EASE;
+        if (Math.abs(target - current) < 0.4) {
+          current = target;
+          running = false;
+        }
+        window.scrollTo(0, current);
+        if (running) requestAnimationFrame(loop);
+      }
+
+      // keep target in sync when scroll happens by other means (keys, bar, resize)
+      function resync() {
+        if (!running) { target = window.scrollY; current = target; }
+      }
+
+      // allow other scripts to glide the page to a target (keeps inertia in sync)
+      window.__inertiaScrollTo = function (y) {
+        target = Math.min(Math.max(y, 0), maxScroll());
+        if (!running) { running = true; requestAnimationFrame(loop); }
+      };
+
+      window.addEventListener("wheel", onWheel, { passive: false });
+      window.addEventListener("resize", resync);
+      window.addEventListener("keydown", () => requestAnimationFrame(resync));
+    })();
+
+    // ---- Brand mark: show (slide up) only while the user isn't scrolling ----
+    (function () {
+      const logo = document.getElementById("heroLogo");
+      if (!logo) return;
+      let t;
+      function activity() {
+        logo.classList.remove("show");
+        clearTimeout(t);
+        t = setTimeout(() => logo.classList.add("show"), 700);
+      }
+      window.__heroActivity = activity;   // let the gallery hide it during horizontal scroll
+      window.addEventListener("scroll", activity, { passive: true });
+      window.addEventListener("wheel", activity, { passive: true });
+      t = setTimeout(() => logo.classList.add("show"), 700);
+    })();
+
+    // ---- Scroll lock (engaged while gallery sub-section 2 is open) ----
+    (function () {
+      let locked = false, lockY = 0;
+      window.__setScrollLock = function (on) {
+        locked = !!on;
+        lockY = window.scrollY || window.pageYOffset || 0;
+      };
+      window.__isScrollLocked = function () { return locked; };
+      // pin the page if anything (scrollbar drag, momentum) tries to move it
+      window.addEventListener("scroll", function () {
+        if (locked) window.scrollTo(0, lockY);
+      }, { passive: true });
+      // block keyboard scrolling (space, pgup/dn, home/end, up/down arrows)
+      window.addEventListener("keydown", function (e) {
+        if (locked && [32, 33, 34, 35, 36, 38, 40].indexOf(e.keyCode) !== -1) e.preventDefault();
+      }, { passive: false });
+    })();
+
+    // ---- Gallery: CTA on card 1 slides sub-section 2 into the screen ----
+    // Initialised per gallery so multiple galleries work independently.
+    function initGallery(root) {
+      const track = root.querySelector(".gallery__track");
+      if (!track) return;
+      const cta = root.querySelector(".gallery__panel--solo .glass__btn");
+      const closeBtn = root.querySelector(".gallery__close");
+      const group = track.querySelector(".gallery__panel--group");
+      const cards = group ? Array.from(group.querySelectorAll(".glass")) : [];
+      const dotsWrap = root.querySelector(".gallery__dots");
+      let dots = [];
+      if (dotsWrap) {
+        if (cards.length < 2) {
+          dotsWrap.style.display = "none";     // a single card needs no progression dots
+        } else {
+          dotsWrap.innerHTML = "";             // rebuild one dot per card
+          dots = cards.map((_, i) => {
+            const b = document.createElement("button");
+            b.className = "gallery__dot" + (i === 0 ? " is-active" : "");
+            b.setAttribute("aria-label", "Card " + (i + 1));
+            dotsWrap.appendChild(b);
+            return b;
+          });
+        }
+      }
+
+      // single-project category -> centre the lone card
+      if (group && cards.length < 2) group.classList.add("is-single");
+
+      // multi-project category -> add a "view all" link to the listing page
+      const viewallUrl = root.getAttribute("data-viewall");
+      if (viewallUrl) {
+        // floating pill shown while browsing sub-section 2
+        const sticky = root.querySelector(".gallery__sticky");
+        if (sticky) {
+          const a = document.createElement("a");
+          a.className = "gallery__viewall";
+          a.href = viewallUrl;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.innerHTML = "View all projects &rarr;";
+          sticky.appendChild(a);
+        }
+      }
+
+      let targetX = 0, curX = 0, running = false, dotTimer;
+
+      // show the dots while scrolling, hide them shortly after it stops
+      function pingDots() {
+        if (!dotsWrap) return;
+        dotsWrap.classList.add("is-active");
+        clearTimeout(dotTimer);
+        dotTimer = setTimeout(() => dotsWrap.classList.remove("is-active"), 900);
+      }
+
+      // card centre in the group's content coordinates (scroll-independent)
+      function cardCenter(c) {
+        const gRect = group.getBoundingClientRect();
+        const r = c.getBoundingClientRect();
+        return (r.left - gRect.left) + group.scrollLeft + r.width / 2;
+      }
+      function updateDots() {
+        if (!group || !cards.length || !dots.length) return;
+        const center = group.scrollLeft + group.clientWidth / 2;
+        let best = 0, bestD = Infinity;
+        cards.forEach((c, i) => {
+          const d = Math.abs(cardCenter(c) - center);
+          if (d < bestD) { bestD = d; best = i; }
+        });
+        dots.forEach((d, i) => d.classList.toggle("is-active", i === best));
+      }
+      function loop() {
+        curX += (targetX - curX) * 0.14;
+        if (Math.abs(targetX - curX) < 0.5) { curX = targetX; running = false; }
+        if (group) group.scrollLeft = curX;
+        updateDots();
+        if (running) pingDots();              // keep dots visible through the glide
+        if (running) requestAnimationFrame(loop);
+      }
+
+      if (cta) cta.addEventListener("click", () => {
+        track.classList.add("is-open");
+        if (window.__setScrollLock) window.__setScrollLock(true);   // lock page scroll
+        updateDots();
+        pingDots();                           // brief hint on open, then fades
+      });
+      if (closeBtn) closeBtn.addEventListener("click", () => {
+        track.classList.remove("is-open");   // slide back to sub-section 1
+        targetX = curX = 0;                  // reset the horizontal scroll
+        if (group) group.scrollLeft = 0;
+        if (window.__setScrollLock) window.__setScrollLock(false);  // re-enable scroll
+        updateDots();
+        clearTimeout(dotTimer);
+        if (dotsWrap) dotsWrap.classList.remove("is-active");
+      });
+
+      // click a dot -> smooth-scroll that card toward centre
+      dots.forEach((dot, i) => dot.addEventListener("click", () => {
+        const c = cards[i];
+        if (!c || !group) return;
+        const max = group.scrollWidth - group.clientWidth;
+        targetX = Math.min(Math.max(cardCenter(c) - group.clientWidth / 2, 0), max);
+        if (!running) { running = true; requestAnimationFrame(loop); }
+      }));
+
+      // horizontal scroll within sub-section 2 — vertical wheel pans sideways
+      if (group) {
+        group.addEventListener("wheel", (e) => {
+          if (!track.classList.contains("is-open") || !e.deltaY) return;
+          const max = group.scrollWidth - group.clientWidth;
+          // at the edges, let the page scroll normally (e.g. back up to the frames)
+          if ((targetX <= 0 && e.deltaY < 0) || (targetX >= max && e.deltaY > 0)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          targetX = Math.min(Math.max(targetX + e.deltaY, 0), max);
+          pingDots();
+          if (window.__heroActivity) window.__heroActivity();   // hide the bottom logo while panning
+          if (!running) { running = true; requestAnimationFrame(loop); }
+        }, { passive: false });
+      }
+    }
+    document.querySelectorAll(".gallery").forEach(initGallery);
+  </script>
+</body>
+</html>
