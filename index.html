@@ -55,7 +55,7 @@
     /* ---------- Scroll-scrub frame section ---------- */
     .frames {
       position: relative;
-      height: 3312vh;           /* scroll distance for the frame scrub (17 segments; New18 holds 30 extra frames) */
+      height: 3180vh;           /* scroll distance for the frame scrub (17 segments; New18 trimmed to clean frames) */
       background: #ffffff;
     }
 
@@ -777,6 +777,7 @@
 
     /* brand logo intro over the New1 opening segment */
     .intro-logo {
+      display: none;              /* intro logo hidden */
       position: absolute;
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
@@ -1172,7 +1173,7 @@
         { folder: "New14", count: 121 },  // gallery 4 backdrop (Medical)
         { folder: "New16", count: 121 },  // gallery 6 backdrop (Entertainment)
         { folder: "New17", count: 121 },  // transition (after Entertainment)
-        { folder: "New18", count: 151 },  // transition (after Entertainment) — first 30 frames hold the clean still so the closing line lingers
+        { folder: "New18", count: 68 },   // closing: 30 held clean frames + clean tail; red brand end-frame (69+) omitted
       ];
       // Flatten into one ordered list of frame URLs
       const FRAME_URLS = SEQUENCES.flatMap((s) =>
@@ -1278,7 +1279,7 @@
         }
 
         // closing CTAs — appear once the scroll reaches the very end
-        if (endCta) endCta.classList.toggle("is-visible", f >= V(17, 125));
+        if (endCta) endCta.classList.toggle("is-visible", f >= V(17, 62));
 
         // gallery overlays — each fades in over its duplicated New5 segment
         galleries.forEach((g) => {
