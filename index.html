@@ -776,6 +776,45 @@
     }
 
     /* brand logo intro over the New1 opening segment */
+    /* scroll hint at the opening */
+    .scroll-hint {
+      position: absolute;
+      left: 50%; bottom: 5.5vh;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      color: #4d3609;
+      pointer-events: none;
+      transition: opacity .5s ease;
+    }
+    .scroll-hint__label {
+      font-family: "Organetto", sans-serif;
+      font-size: clamp(.66rem, .9vw, .78rem);
+      letter-spacing: .34em;
+      text-transform: uppercase;
+    }
+    .scroll-hint__line {
+      position: relative;
+      width: 1px; height: 48px;
+      background: rgba(77, 54, 9, .28);
+      overflow: hidden;
+    }
+    .scroll-hint__line::after {
+      content: "";
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%; height: 45%;
+      background: #4d3609;
+      animation: scrollPulse 1.8s cubic-bezier(.5, 0, .2, 1) infinite;
+    }
+    @keyframes scrollPulse {
+      0%   { transform: translateY(-110%); }
+      100% { transform: translateY(230%); }
+    }
+
     .intro-logo {
       display: none;              /* intro logo hidden */
       position: absolute;
@@ -825,6 +864,12 @@
       <!-- brand logo intro — over the New1 opening, fades out on scroll -->
       <img class="intro-logo" id="introLogo" src="NEW/Untitled-1.png" alt="Manglam BDL">
 
+      <!-- scroll hint — shown at the very start, fades as you scroll -->
+      <div class="scroll-hint" id="scrollHint">
+        <span class="scroll-hint__label">Scroll</span>
+        <span class="scroll-hint__line"></span>
+      </div>
+
       <!-- per-video captions — simple uppercase text -->
       <div class="welcome cap-lockup"><p class="cap-line">For life,<br>at its fullest</p></div>
       <div class="welcome cap-lockup cap-tr"><p class="cap-line">For the life<br>you are building</p></div>
@@ -836,7 +881,6 @@
       <!-- closing CTAs — appear at the very end of the scroll -->
       <div class="end-cta" id="endCta">
         <button class="end-cta__btn" id="backTop" type="button">Back to top <span>&uarr;</span></button>
-        <a class="end-cta__btn end-cta__btn--solid" href="https://www.manglamgroup.com/" target="_blank" rel="noopener">Visit Manglam Group <span>&rarr;</span></a>
       </div>
 
       <!-- brand mark — slides up when idle, then floats -->
@@ -1200,6 +1244,7 @@
       ];
       const caps = Array.from(document.querySelectorAll(".cap-lockup"));
       const endCta = document.getElementById("endCta");
+      const scrollHint = document.getElementById("scrollHint");
       const backTop = document.getElementById("backTop");
       if (backTop) backTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
       const images = new Array(FRAME_COUNT);
@@ -1270,6 +1315,11 @@
         if (introLogo) {
           const s = V(1, 35), e = V(1, 80);
           introLogo.style.opacity = f <= s ? 1 : Math.max(0, 1 - (f - s) / (e - s));
+        }
+
+        // scroll hint — visible at the very start, fades once scrolling begins
+        if (scrollHint) {
+          scrollHint.style.opacity = f <= 2 ? 1 : Math.max(0, 1 - (f - 2) / 20);
         }
 
         // show each caption during its video segment
